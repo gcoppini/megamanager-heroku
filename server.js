@@ -8,21 +8,19 @@ var express  = require('express'),
     // Mongoose Schema definition
     Schema = new mongoose.Schema({
       id       : String, 
-      title    : String,
-      completed: Boolean
+      Concurso : Number,
+      Dezena1  : Number,
+      Dezena2  : Number,
+      Dezena3  : Number,
+      Dezena4  : Number,
+      Dezena5  : Number,
+      Dezena6  : Number,
+      DataSorteio  : Date,
+      Gabarito  : Number
     }),
 
-    Todo = mongoose.model('Todo', Schema);
+    Resultado = mongoose.model('Resultado', Schema);
 
-/*
- * I’m sharing my credential here.
- * Feel free to use it while you’re learning.
- * After that, create and use your own credential.
- * Thanks.
- *
- * MONGOLAB_URI=mongodb://example:example@ds053312.mongolab.com:53312/todolist
- * 'mongodb://example:example@ds053312.mongolab.com:53312/todolist'
- */
 mongoose.connect(process.env.MONGOLAB_URI, function (error) {
     if (error) console.error(error);
     else console.log('mongo connected');
@@ -33,19 +31,31 @@ express()
   .use(bodyParser.json()) // support json encoded bodies
   .use(bodyParser.urlencoded({ extended: true })) // support encoded bodies
 
+
+
+
+  //API
   .get('/api', function (req, res) {
     res.json(200, {msg: 'OK' });
   })
 
-  .get('/api/todos', function (req, res) {
+  .get('/api/version', function (req, res) {
+    res.json(200, {msg: process.env.VERSION });
+  })
+
+
+
+  //Resultados
+
+  .get('/api/resultados', function (req, res) {
     // http://mongoosejs.com/docs/api.html#query_Query-find
-    Todo.find( function ( err, todos ){
+    Resultado.find( function ( err, todos ){
       res.json(200, todos);
     });
   })
 
-  .post('/api/todos', function (req, res) {
-    var todo = new Todo( req.body );
+  .post('/api/resultados', function (req, res) {
+    var todo = new Resultado( req.body );
     todo.id = todo._id;
     // http://mongoosejs.com/docs/api.html#model_Model-save
     todo.save(function (err) {
@@ -53,23 +63,23 @@ express()
     });
   })
 
-  .del('/api/todos', function (req, res) {
+  .del('/api/resultados', function (req, res) {
     // http://mongoosejs.com/docs/api.html#query_Query-remove
-    Todo.remove({ completed: true }, function ( err ) {
+    Resultado.remove({ completed: true }, function ( err ) {
       res.json(200, {msg: 'OK'});
     });
   })
 
-  .get('/api/todos/:id', function (req, res) {
+  .get('/api/resultados/:id', function (req, res) {
     // http://mongoosejs.com/docs/api.html#model_Model.findById
-    Todo.findById( req.params.id, function ( err, todo ) {
+    Resultado.findById( req.params.id, function ( err, todo ) {
       res.json(200, todo);
     });
   })
 
-  .put('/api/todos/:id', function (req, res) {
+  .put('/api/resultados/:id', function (req, res) {
     // http://mongoosejs.com/docs/api.html#model_Model.findById
-    Todo.findById( req.params.id, function ( err, todo ) {
+    Resultado.findById( req.params.id, function ( err, todo ) {
       todo.title = req.body.title;
       todo.completed = req.body.completed;
       // http://mongoosejs.com/docs/api.html#model_Model-save
@@ -79,9 +89,9 @@ express()
     });
   })
 
-  .del('/api/todos/:id', function (req, res) {
+  .del('/api/resultados/:id', function (req, res) {
     // http://mongoosejs.com/docs/api.html#model_Model.findById
-    Todo.findById( req.params.id, function ( err, todo ) {
+    Resultado.findById( req.params.id, function ( err, todo ) {
       // http://mongoosejs.com/docs/api.html#model_Model.remove
       todo.remove( function ( err, todo ){
         res.json(200, {msg: 'OK'});
