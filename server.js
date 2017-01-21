@@ -4,6 +4,10 @@
 var express  = require('express'),
     mongoose = require('mongoose'),
     bodyParser = require('body-parser'),
+    request = require("request"),
+    fs = require('fs'),
+    http = require( "http" ),
+    url = require( "url" ),
 
     // Mongoose Schema definition
     Schema = new mongoose.Schema({
@@ -18,6 +22,9 @@ var express  = require('express'),
       DataSorteio  : Date,
       Gabarito  : Number
     }),
+
+    URL_GET_COOKIES = "http://www1.caixa.gov.br/loterias/loterias/megasena/download.asp";
+    URL_ARQUIVO_RESULTADOS = "http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_mgsasc.zip";
 
     Resultado = mongoose.model('Resultado', Schema);
 
@@ -46,6 +53,38 @@ express()
 
 
   //Resultados
+
+  .get('/api/resultados/download', function (req, res) {
+
+    request({
+      uri: URL_GET_COOKIES,
+      method: 'GET',
+      jar: true,
+      followAllRedirects: true,
+      maxRedirects: 2 
+      }, function(err, res, body) {
+        if(err) {
+            return console.error(err);
+        }
+
+      var file = fs.createWriteStream(__dirname + "/file.zip");
+
+      request({
+      uri: URL_ARQUIVO_RESULTADOS,
+      method: 'GET',
+      jar: true
+      }, function(err, res, body) {
+          if(err) {
+              return console.error(err);
+          }
+        //console.log("Got a response!", res);
+        //console.log("Response body:", body);
+      }).pipe(file);
+    });
+
+    res.json(200, {msg: 'OK' });
+    
+  })
 
   .get('/api/resultados', function (req, res) {
     // http://mongoosejs.com/docs/api.html#query_Query-find
