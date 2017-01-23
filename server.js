@@ -125,7 +125,7 @@ express()
 
     var q =  "select * from html where url=\"http://www.shinty.com/news/\"";
 
-    var url = req.protocol + '://' + req.get('host') +"/EXTRACTED/"+ TODAY +".htm/";
+    var url = req.protocol + '://' + req.get('host') +"/EXTRACTED/"+ TODAY +".htm";
     var q2 = "select * from html where url="+ "\""+ url + "\"";
 
     console.log(url);
