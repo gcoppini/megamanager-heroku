@@ -1,4 +1,3 @@
-
 // https://devcenter.heroku.com/articles/mongolab
 // http://todomvc.com/examples/angularjs/#/
 var express  = require('express'),
@@ -8,6 +7,9 @@ var express  = require('express'),
     fs = require('fs'),
     http = require( "http" ),
     url = require( "url" ),
+    unzip = require("unzip"),
+    moment = require('moment'),
+    YQL = require('yql'),
 
     // Mongoose Schema definition
     Schema = new mongoose.Schema({
@@ -25,6 +27,14 @@ var express  = require('express'),
 
     URL_GET_COOKIES = "http://www1.caixa.gov.br/loterias/loterias/megasena/download.asp";
     URL_ARQUIVO_RESULTADOS = "http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_mgsasc.zip";
+    
+    TODAY = moment(new Date()).format('YYYYMMDD');
+    PATH_DOWNLOAD = __dirname + "/DOWNLOAD";
+    PATH_EXTRACTED = __dirname + "/EXTRACTED";
+    FILE_DOWNLOAD = PATH_DOWNLOAD + "/" + TODAY +".zip";
+    FILE_EXTRACTED = PATH_EXTRACTED + "/" + TODAY +".htm";;
+    FILE_EXTRACT_TARGET = "d_megasc.htm";
+
 
     Resultado = mongoose.model('Resultado', Schema);
 
@@ -67,7 +77,7 @@ express()
             return console.error(err);
         }
 
-      var file = fs.createWriteStream(__dirname + "/file.zip");
+      var file = fs.createWriteStream(FILE_DOWNLOAD);
 
       request({
       uri: URL_ARQUIVO_RESULTADOS,
@@ -84,6 +94,50 @@ express()
 
     res.json(200, {msg: 'OK' });
     
+  })
+
+
+    .get('/api/resultados/descompactar', function (req, res) {
+
+      fs.createReadStream(FILE_DOWNLOAD)
+      .pipe(unzip.Parse())
+      .on('entry', function (entry) {
+          var fileName = entry.path;
+          var type = entry.type; // 'Directory' or 'File' 
+          var size = entry.size;
+          console.log(fileName);
+          if (fileName === FILE_EXTRACT_TARGET) {
+              entry.pipe(fs.createWriteStream(FILE_EXTRACTED));
+          } else {
+              entry.autodrain();
+          }
+        });
+
+      res.json(200, {msg: 'OK' });
+
+    })
+
+  
+  .get('/api/resultados/parse', function(req,res){
+    
+    var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+    
+
+    var q =  "select * from html where url=\"http://www.shinty.com/news/\"";
+
+    var url = req.protocol + '://' + req.get('host') +"/EXTRACTED/"+ TODAY +".htm/";
+    var q2 = "select * from html where url="+ "\""+ url + "\"";
+
+    console.log(url);
+    console.log(q2);
+    
+    var query = new YQL(q2);
+    query.exec(function (error, response) {
+      console.log("Parse!",response.query.results);
+    });
+
+    res.json(200, {msg: 'OK' });
+
   })
 
   .get('/api/resultados', function (req, res) {
@@ -139,4 +193,5 @@ express()
   })
 
   .use(express.static(__dirname + '/'))
+  .use(express.static(__dirname + '/EXTRACTED'))
   .listen(process.env.PORT || 5000);

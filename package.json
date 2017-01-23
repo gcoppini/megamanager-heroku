@@ -10,7 +10,9 @@
     "express": "~3.4.7",
     "body-parser": "~1.13.1",
     "mongoose": "~4.0.6",
-    "request":"~2.79.0"
+    "request":"~2.79.0",
+    "unzip":"~0.1.11",
+    "moment":"~2.17.1"
   },
   "repository": {
     "type": "git",
