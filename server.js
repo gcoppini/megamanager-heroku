@@ -37,6 +37,7 @@ var express  = require('express'),
 
 
     Resultado = mongoose.model('Resultado', Schema);
+    
 
 mongoose.connect(process.env.MONGOLAB_URI, function (error) {
     if (error) console.error(error);
@@ -120,24 +121,91 @@ express()
   
   .get('/api/resultados/parse', function(req,res){
     
-    var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-    
+    //var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+    //var q =  "select * from html where url=\"http://www.shinty.com/news/\"";
 
-    var q =  "select * from html where url=\"http://www.shinty.com/news/\"";
+    var ResultadoParse = [];
 
     var url = req.protocol + '://' + req.get('host') +"/EXTRACTED/"+ TODAY +".htm";
-    var q2 = "select * from html where url="+ "\""+ url + "\"";
+    var url2 = "https://megamanager-heroku.herokuapp.com/EXTRACTED/20170123.htm";
+    var q2 = "select * from html where url="+ "\""+ url2 + "\" and xpath=\"//html/body/table/tbody\"";
 
     console.log(url);
     console.log(q2);
     
-    var query = new YQL(q2);
-    query.exec(function (error, response) {
-      console.log("Parse!",response.query.results);
+    var yqlCmd = new YQL(q2);
+        
+    yqlCmd.exec(function (error, response) {
+
+      //console.log("Parse!",response.query.results);
+
+      var k = response.query.results.tbody.tr.length;
+
+      for (var j = 1; j < k; j++) {
+        var res = new Resultado();
+        for (var i = 0; i <= 7; i++) {
+          if (typeof response.query.results.tbody.tr[j].td[i] === "undefined") {
+            continue;
+          }
+          
+          var cell = response.query.results.tbody.tr[j].td[i];
+
+          if (cell == null) {
+            continue;
+          }
+
+          //console.log(cell.content);
+
+          var valor = cell.content
+
+            switch(i)
+            {
+              case 0:
+                res.id = valor;
+              break;
+
+              case 1:
+                res.DataSorteio = valor;
+              break;
+
+              case 2:
+                res.Dezena1 = valor;
+              break;
+
+              case 3:
+                res.Dezena2 = valor;
+              break;
+
+              case 4:
+                res.Dezena3 = valor;
+              break;
+
+              case 5:
+                res.Dezena4 = valor;
+              break;
+
+              case 6:
+                res.Dezena5 = valor;
+              break;
+
+              case 7:
+                res.Dezena6 = valor;
+              break;
+
+              default:
+                console.log("Parse Default", valor);
+              break;
+            }
+            
+        }
+        //console.log(res);
+        ResultadoParse.push(res);
+      }
     });
 
-    res.json(200, {msg: 'OK' });
+    console.log(ResultadoParse);
 
+    res.json(200, {msg: 'OK' });
   })
 
   .get('/api/resultados', function (req, res) {
