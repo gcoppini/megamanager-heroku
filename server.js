@@ -198,7 +198,7 @@ express()
             }
             
         }
-        //console.log(res);
+        console.log(res);
         ResultadoParse.push(res);
       }
     });
