@@ -1,6 +1,7 @@
 // https://devcenter.heroku.com/articles/mongolab
 // http://todomvc.com/examples/angularjs/#/
-var express  = require('express'),
+
+var express = require('express'),
     mongoose = require('mongoose'),
     bodyParser = require('body-parser'),
     request = require("request"),
@@ -25,17 +26,19 @@ var express  = require('express'),
       Gabarito  : Number
     }),
 
-    URL_GET_COOKIES = "http://www1.caixa.gov.br/loterias/loterias/megasena/download.asp";
-    URL_ARQUIVO_RESULTADOS = "http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_mgsasc.zip";
+    URL_GET_COOKIES = "http://www1.caixa.gov.br/loterias/loterias/megasena/download.asp",
+    URL_ARQUIVO_RESULTADOS = "http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_mgsasc.zip",
     
-    TODAY = moment(new Date()).format('YYYYMMDD');
-    PATH_DOWNLOAD = __dirname + "/DOWNLOAD";
-    PATH_EXTRACTED = __dirname + "/EXTRACTED";
-    FILE_DOWNLOAD = PATH_DOWNLOAD + "/" + TODAY +".zip";
-    FILE_EXTRACTED = PATH_EXTRACTED + "/" + TODAY +".htm";;
-    FILE_EXTRACT_TARGET = "d_megasc.htm";
+    TODAY = moment(new Date()).format('YYYYMMDD'),
+    PATH_DOWNLOAD = __dirname + "/DOWNLOAD",
+    PATH_EXTRACTED = __dirname + "/EXTRACTED",
+    FILE_DOWNLOAD = PATH_DOWNLOAD + "/" + TODAY +".zip",
+    FILE_EXTRACTED = PATH_EXTRACTED + "/" + TODAY +".htm",
+    FILE_EXTRACT_TARGET = "d_megasc.htm",
+    RESULTADOS_PARSE,
+    RESULTADOS_EXTRACT = [],
 
-
+    
     Resultado = mongoose.model('Resultado', Schema);
     
 
@@ -44,12 +47,12 @@ mongoose.connect(process.env.MONGOLAB_URI, function (error) {
     else console.log('mongo connected');
 });
 
+
 express()
+
   // https://scotch.io/tutorials/use-expressjs-to-get-url-and-post-parameters
   .use(bodyParser.json()) // support json encoded bodies
   .use(bodyParser.urlencoded({ extended: true })) // support encoded bodies
-
-
 
 
   //API
@@ -66,7 +69,6 @@ express()
   //Resultados
 
   .get('/api/resultados/download', function (req, res) {
-
     request({
       uri: URL_GET_COOKIES,
       method: 'GET',
@@ -88,17 +90,14 @@ express()
           if(err) {
               return console.error(err);
           }
-        //console.log("Got a response!", res);
-        //console.log("Response body:", body);
       }).pipe(file);
     });
 
     res.json(200, {msg: 'OK' });
     
   })
-
-
-    .get('/api/resultados/descompactar', function (req, res) {
+    
+  .get('/api/resultados/descompactar', function (req, res) {
 
       fs.createReadStream(FILE_DOWNLOAD)
       .pipe(unzip.Parse())
@@ -117,96 +116,102 @@ express()
       res.json(200, {msg: 'OK' });
 
     })
+      
+    .get('/api/resultados/parse', function (req, res) {
 
-  
-  .get('/api/resultados/parse', function(req,res){
-    
-    //var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-    //var q =  "select * from html where url=\"http://www.shinty.com/news/\"";
+        //var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+        //var q =  "select * from html where url=\"http://www.shinty.com/news/\"";
 
-    var ResultadoParse = [];
+        var url = req.protocol + '://' + req.get('host') + "/EXTRACTED/" + TODAY + ".htm";
+        var urlLocal = "https://megamanager-heroku.herokuapp.com/EXTRACTED/20170123.htm";
+        var query = "SELECT * FROM html WHERE url=" + "\"" + urlLocal + "\" AND xpath=\"//html/body/table/tbody\"";
 
-    var url = req.protocol + '://' + req.get('host') +"/EXTRACTED/"+ TODAY +".htm";
-    var url2 = "https://megamanager-heroku.herokuapp.com/EXTRACTED/20170123.htm";
-    var q2 = "select * from html where url="+ "\""+ url2 + "\" and xpath=\"//html/body/table/tbody\"";
+        console.log("YQL Query:", query);
+        var yqlCmd = new YQL(query);
 
-    console.log(url);
-    console.log(q2);
-    
-    var yqlCmd = new YQL(q2);
-        
-    yqlCmd.exec(function (error, response) {
+        yqlCmd.exec(function (error, response) {
 
-      //console.log("Parse!",response.query.results);
+            console.log("Parse!", response.query.results);
 
-      var k = response.query.results.tbody.tr.length;
-
-      for (var j = 1; j < k; j++) {
-        var res = new Resultado();
-        for (var i = 0; i <= 7; i++) {
-          if (typeof response.query.results.tbody.tr[j].td[i] === "undefined") {
-            continue;
-          }
-          
-          var cell = response.query.results.tbody.tr[j].td[i];
-
-          if (cell == null) {
-            continue;
-          }
-
-          //console.log(cell.content);
-
-          var valor = cell.content
-
-            switch(i)
-            {
-              case 0:
-                res.id = valor;
-              break;
-
-              case 1:
-                res.DataSorteio = valor;
-              break;
-
-              case 2:
-                res.Dezena1 = valor;
-              break;
-
-              case 3:
-                res.Dezena2 = valor;
-              break;
-
-              case 4:
-                res.Dezena3 = valor;
-              break;
-
-              case 5:
-                res.Dezena4 = valor;
-              break;
-
-              case 6:
-                res.Dezena5 = valor;
-              break;
-
-              case 7:
-                res.Dezena6 = valor;
-              break;
-
-              default:
-                console.log("Parse Default", valor);
-              break;
+            if (response.query.results != null) {
+                RESULTADOS_PARSE = response.query.results;
+                res.json(200, { msg: 'OK' });
             }
-            
-        }
-        console.log(res);
-        ResultadoParse.push(res);
-      }
-    });
+            else {
+                console.log("YQL Query error", error);
+                res.json(500, { msg: 'NOK' });
+            }
+        })
+    })
 
-    console.log(ResultadoParse);
+        .get('/api/resultados/extract', function (req, res) {
 
-    res.json(200, {msg: 'OK' });
-  })
+            //var k = response.query.results.tbody.tr.length;
+            var k = RESULTADOS_PARSE.tbody.tr.length;
+
+            for (var j = 1; j < k; j++) {
+                var res = new Resultado();
+                for (var i = 0; i <= 7; i++) {
+                    if (typeof response.query.results.tbody.tr[j].td[i] === "undefined") {
+                        continue;
+                    }
+
+                    var cell = response.query.results.tbody.tr[j].td[i];
+
+                    if (cell == null) {
+                        continue;
+                    }
+
+                    //console.log(cell.content);
+
+                    var valor = cell.content;
+
+                    switch (i) {
+                        case 0:
+                            res.id = valor;
+                            break;
+
+                        case 1:
+                            res.DataSorteio = valor;
+                            break;
+
+                        case 2:
+                            res.Dezena1 = valor;
+                            break;
+
+                        case 3:
+                            res.Dezena2 = valor;
+                            break;
+
+                        case 4:
+                            res.Dezena3 = valor;
+                            break;
+
+                        case 5:
+                            res.Dezena4 = valor;
+                            break;
+
+                        case 6:
+                            res.Dezena5 = valor;
+                            break;
+
+                        case 7:
+                            res.Dezena6 = valor;
+                            break;
+
+                        default:
+                            console.log("Parse Default", valor);
+                            break;
+                    };
+                };
+
+                console.log(res);
+                RESULTADOS_EXTRACT.push(res);
+            };
+            res.json(200, { msg: 'OK' });
+        })
+
+    
 
   .get('/api/resultados', function (req, res) {
     // http://mongoosejs.com/docs/api.html#query_Query-find
@@ -258,7 +263,7 @@ express()
         res.json(200, {msg: 'OK'});
       });
     });
-  })
+    })
 
   .use(express.static(__dirname + '/'))
   .use(express.static(__dirname + '/EXTRACTED'))
